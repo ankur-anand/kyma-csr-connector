@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	url := "https://connector-service.52.172.12.211.xip.io/v1/applications/signingRequests/info?token=3EOdFJtGLiVHtmVyDX0hNJavg0wAzOOKsJozjbddsnTegSOYhIXsH_JiQGgPLFqwJ6eUNLDQoY1SywzhtOYTQw=="
+	url := "https://connector-service.kyma.test.xip.io/v1/applications/signingRequests/info?token=3EOdFJtGLiVHtmVyDX0hNJavg0wAzOOKsJozjbddsnTegSOYhIXsH_JiQGgPLFqwJ6eUNLDQoY1SywzhtOYTQw=="
 	connector, err := kymacsr.NewConnecter(url)
 	if err != nil {
 		log.Fatal(err)

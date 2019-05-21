@@ -5,7 +5,7 @@ A pure go client that Generate a CSR and send it to Kyma, saves the valid client
 Example:
 
 ```Go
-url := "https://connector-service.kyma.test.xip.io/v1/applications/signingRequests/info?token=sT8xJbJr5LCzj0Z_ZLLG84j8QzTJhgXvsYo8sgsXJk3pRrS-8Yr3a2uI5ThQbcqsoqQbwRCF6b7q2rAP5pzgdQ=="
+url := "https://connector-service.kyma.test.xip.io/v1/applications/signingRequests/info?token=3EOdFJtGLiVHtmVyDX0hNJavg0wAzOOKsJozjbddsnTegSOYhIXsH_JiQGgPLFqwJ6eUNLDQoY1SywzhtOYTQw=="
 	connector, err := kymacsr.NewConnecter(url)
 	if err != nil {
 		log.Fatal(err)
@@ -14,7 +14,12 @@ url := "https://connector-service.kyma.test.xip.io/v1/applications/signingReques
 	err = connector.GenerateCSR()
 	if err != nil {
 		log.Fatal(err)
-    }
+	}
+	val, err := connector.GetMetadata()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(val)
 ```
 
 For more Example see main.go
