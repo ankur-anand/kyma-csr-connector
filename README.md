@@ -23,3 +23,11 @@ url := "https://connector-service.kyma.test.xip.io/v1/applications/signingReques
 ```
 
 For more Example see main.go
+
+ALL Certificate will be saved in the current directory with `.pem` extension.
+
+```
+priavateKey         = "privatekey.pem"
+clientCertificate   = "clientCrt.pem"
+CaCertificate       = "caCrt.pem"
+```
