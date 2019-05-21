@@ -77,21 +77,6 @@ type Connecter interface {
 //        "key-algorithm": "rsa2048"
 //      }
 //   }
-type metaDataEndpoint struct {
-	ClientIdentity application    `json:"clientIdentity"`
-	Urls           metaDataUrls   `json:"urls"`
-	Certificate    csrCertificate `json:"certificate"`
-}
-
-type application struct {
-	Application string `json:"application"`
-}
-type metaDataUrls struct {
-	EventsURL     string `json:"eventsUrl"`
-	MetadataURL   string `json:"metadataUrl"`
-	RenewCertURL  string `json:"renewCertUrl"`
-	RevokeCertURL string `json:"revokeCertUrls"`
-}
 
 // valid client certificate signed by the Kyma Certificate Authority.
 // {
@@ -153,6 +138,7 @@ type csrCertificate struct {
 type connector struct {
 	kymaURL string
 	client  *http.Client
+	csrinfo *csrInfo
 }
 
 type connect struct {
@@ -218,6 +204,8 @@ func (c *connector) GenerateCSR() error {
 		return verr
 	}
 
+	// setup csrinfo to connector
+	c.csrinfo = cinfo
 	// generate the public and private key
 	csrReq, err := generateCSRRequest(cinfo)
 	csrReqBase64 := base64.StdEncoding.EncodeToString([]byte(csrReq))
@@ -231,7 +219,7 @@ func (c *connector) GenerateCSR() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(byteReq))
+
 	cSc := &clientSignedCertificate{}
 	body, err = c.sendPostRequest(byteReq, cinfo.CsrURL)
 	if err != nil {
@@ -256,11 +244,59 @@ func (c *connector) Update() error {
 }
 
 func (c *connector) GetMetadataWithHTTPClient(httpClient *http.Client) (string, error) {
-	return "", nil
+	return "", fmt.Errorf("CURRENTLY NOT IMPLEMENTED")
 }
 
+// GetMetadata setups default https client with a timeout of 10 sec.
+// It assumes the following file to be present
+// "privatekey.pem", "clientCrt.pem", "caCrt.pem"
+// in the current directory
+//
+// TODO
+// read file from any path suppiled as arguments
 func (c *connector) GetMetadata() (string, error) {
-	return "", nil
+	// if csrInfo has not been found
+	// user need to call the GenerateCSR Method before.
+	url := c.csrinfo.API.InfoURL
+	if url == "" {
+		return "", fmt.Errorf(`infoUrl":["https://gateway.{CLUSTER_DOMAIN}/v1/applications/management/info"] Not Initialied call "GenerateCSR() method first"`)
+	}
+	// Load client cert and keyFile
+	cert, err := tls.LoadX509KeyPair(fileClientCrt, fileGenerateKey)
+	if err != nil {
+		return "", err
+	}
+
+	// Load CA cert
+	caCert, err := ioutil.ReadFile(fileCaCrt)
+	if err != nil {
+		return "", err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	// Setup HTTPS client
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		RootCAs:            caCertPool,
+		InsecureSkipVerify: true,
+	}
+	tlsConfig.BuildNameToCertificate()
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	client := &http.Client{Transport: transport}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("Error RESPONSE FROM [%s], Error[%s]", url, err)
+	}
+	defer resp.Body.Close()
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("Error while reading https Get request body, error [%s]", err)
+	}
+
+	return (string(data)), nil
 }
 
 func (c *connector) sendGetRequest(kymaURL string) ([]byte, error) {
