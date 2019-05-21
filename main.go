@@ -1,13 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	kymacsr "github.com/ankur-anand/kyma-csr-connector/src"
 )
 
 func main() {
-	url := "https://connector-service.kyma.test.xip.io/v1/applications/signingRequests/info?token=sT8xJbJr5LCzj0Z_ZLLG84j8QzTJhgXvsYo8sgsXJk3pRrS-8Yr3a2uI5ThQbcqsoqQbwRCF6b7q2rAP5pzgdQ=="
+	url := "https://connector-service.52.172.12.211.xip.io/v1/applications/signingRequests/info?token=3EOdFJtGLiVHtmVyDX0hNJavg0wAzOOKsJozjbddsnTegSOYhIXsH_JiQGgPLFqwJ6eUNLDQoY1SywzhtOYTQw=="
 	connector, err := kymacsr.NewConnecter(url)
 	if err != nil {
 		log.Fatal(err)
@@ -17,5 +18,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	val, err := connector.GetMetadata()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(val)
 }
