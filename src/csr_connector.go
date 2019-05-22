@@ -29,6 +29,7 @@ const (
 	fileCrt         = "crt.pem"
 	fileClientCrt   = "clientCrt.pem"
 	fileCaCrt       = "caCrt.pem"
+	certificateDIR  = "kyma-cert"
 )
 
 var (
@@ -155,6 +156,7 @@ type connector struct {
 	kymaURL string
 	client  *http.Client
 	csrinfo *csrInfo
+	dirPath string
 }
 
 type connect struct {
@@ -163,7 +165,7 @@ type connect struct {
 
 // NewConnecter returns a Initailzed Connecter With default
 // http.Client with a timeout of 10 sec
-func NewConnecter(appConnectorURL string) (Connecter, error) {
+func NewConnecter(appConnectorURL string, dirPath string) (Connecter, error) {
 	kURL, err := url.Parse(appConnectorURL)
 	if err != nil {
 		return connect{}, err
@@ -177,6 +179,7 @@ func NewConnecter(appConnectorURL string) (Connecter, error) {
 	cnntr := &connector{
 		kymaURL: kURL.String(),
 		client:  myClient,
+		dirPath: dirPath,
 	}
 
 	return connect{
@@ -186,7 +189,7 @@ func NewConnecter(appConnectorURL string) (Connecter, error) {
 
 // NewConnecterWithHTTPClient returns a Initailzed Connecter
 // Caller Need to pass there own httpClient
-func NewConnecterWithHTTPClient(appConnectorURL string, httpClient *http.Client) (Connecter, error) {
+func NewConnecterWithHTTPClient(appConnectorURL string, dirPath string, httpClient *http.Client) (Connecter, error) {
 	kURL, err := url.Parse(appConnectorURL)
 	if err != nil {
 		return connect{}, err
@@ -195,6 +198,7 @@ func NewConnecterWithHTTPClient(appConnectorURL string, httpClient *http.Client)
 	cnntr := &connector{
 		kymaURL: kURL.String(),
 		client:  httpClient,
+		dirPath: dirPath,
 	}
 
 	return connect{
@@ -527,4 +531,30 @@ func (m *Metadata) PrettyPrint() {
 		fmt.Printf("Indentation Print Failed with error %s", err)
 	}
 	fmt.Println(string(json))
+}
+
+func validateDirPATH(dir string) (string, error) {
+	if dir != "" {
+		// check if the directory exits.
+		src, err := os.Stat(dir)
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("Directory [%s] does not exit", dir)
+		}
+
+		if !src.Mode().IsDir() {
+			return "", fmt.Errorf("[%s] is not an directory", dir)
+		}
+		return dir, nil
+	}
+	// get current working directory
+	cDir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("Unable to get the current working dir [%s]", err)
+	}
+	dir = cDir + certificateDIR
+	errDir := os.MkdirAll(dir, 0755)
+	if errDir != nil {
+		return "", fmt.Errorf("Failed to create Dirctory [%s], Error [%s]", dir, err)
+	}
+	return dir, nil
 }

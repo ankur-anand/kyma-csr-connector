@@ -284,3 +284,43 @@ func TestWriteClientSignedCertToFile(t *testing.T) {
 		os.Remove(val)
 	}
 }
+
+func TestValidateDirPATH(t *testing.T) {
+	// create a tmp file
+	tmp := "/tmp/testcsrconnector.txt"
+	fd, err := os.Create(tmp)
+	if err != nil {
+		t.Log(err)
+	}
+	defer fd.Close()
+	defer os.Remove(tmp)
+	cases := []struct {
+		path string
+	}{
+		{
+			path: "",
+		},
+		{
+			path: "/tmp/somecsrconnectortest/dir/",
+		},
+		{
+			path: tmp,
+		},
+	}
+
+	delP := ""
+	for i, ts := range cases {
+		val, err := validateDirPATH(ts.path)
+		if i == 0 {
+			delP = val
+			if err != nil {
+				t.Errorf("Error [%s]", err)
+			}
+			continue
+		}
+		if err.Error() == "" {
+			t.Errorf("Expected Error [%s], Got [%s]", err, "")
+		}
+	}
+	os.Remove(delP)
+}
