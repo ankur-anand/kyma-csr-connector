@@ -58,8 +58,8 @@ func (er *apiResponseError) Error() string {
 type Connecter interface {
 	GenerateCSR() error
 	Update() error // TODO
-	GetMetadataWithHTTPClient(client *http.Client) (string, error)
-	GetMetadata() (string, error)
+	GetMetadataWithHTTPClient(client *http.Client) (*Metadata, error)
+	GetMetadata() (*Metadata, error)
 }
 
 // Metadata endpoint Response
@@ -204,7 +204,7 @@ func NewConnecterWithHTTPClient(appConnectorURL string, httpClient *http.Client)
 }
 
 func (c *connector) GenerateCSR() error {
-	body, err := c.sendGetRequest(c.kymaURL)
+	body, err := c.sendGetRequest(c.kymaURL, c.client)
 	if err != nil {
 		return err
 	}
@@ -237,7 +237,7 @@ func (c *connector) GenerateCSR() error {
 	}
 
 	cSc := &clientSignedCertificate{}
-	body, err = c.sendPostRequest(byteReq, cinfo.CsrURL)
+	body, err = c.sendPostRequest(byteReq, cinfo.CsrURL, c.client)
 	if err != nil {
 		return err
 	}
@@ -259,8 +259,8 @@ func (c *connector) Update() error {
 	return fmt.Errorf("%s", "UPDATE NOT IMPLEMENTED")
 }
 
-func (c *connector) GetMetadataWithHTTPClient(httpClient *http.Client) (string, error) {
-	return "", fmt.Errorf("CURRENTLY NOT IMPLEMENTED")
+func (c *connector) GetMetadataWithHTTPClient(httpClient *http.Client) (*Metadata, error) {
+	return nil, fmt.Errorf("CURRENTLY NOT IMPLEMENTED")
 }
 
 // GetMetadata setups default https client with a timeout of 10 sec.
@@ -270,23 +270,23 @@ func (c *connector) GetMetadataWithHTTPClient(httpClient *http.Client) (string, 
 //
 // TODO
 // read file from any path suppiled as arguments
-func (c *connector) GetMetadata() (string, error) {
+func (c *connector) GetMetadata() (*Metadata, error) {
 	// if csrInfo has not been found
 	// user need to call the GenerateCSR Method before.
 	url := c.csrinfo.API.InfoURL
 	if url == "" {
-		return "", fmt.Errorf(`infoUrl":["https://gateway.{CLUSTER_DOMAIN}/v1/applications/management/info"] Not Initialied call "GenerateCSR() method first"`)
+		return nil, fmt.Errorf(`infoUrl":["https://gateway.{CLUSTER_DOMAIN}/v1/applications/management/info"] Not Initialied call "GenerateCSR() method first"`)
 	}
 	// Load client cert and keyFile
 	cert, err := tls.LoadX509KeyPair(fileClientCrt, fileGenerateKey)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Load CA cert
 	caCert, err := ioutil.ReadFile(fileCaCrt)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
@@ -301,22 +301,20 @@ func (c *connector) GetMetadata() (string, error) {
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	client := &http.Client{Transport: transport}
 
-	resp, err := client.Get(url)
+	resp, err := c.sendGetRequest(url, client)
 	if err != nil {
-		return "", fmt.Errorf("Error RESPONSE FROM [%s], Error[%s]", url, err)
-	}
-	defer resp.Body.Close()
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("Error while reading https Get request body, error [%s]", err)
+		return nil, err
 	}
 
-	return (string(data)), nil
+	metaDataT := &Metadata{}
+	if err := getJSON(metaDataT, resp); err != nil {
+		return nil, err
+	}
+	return metaDataT, nil
 }
 
-func (c *connector) sendGetRequest(kymaURL string) ([]byte, error) {
-	r, getErr := c.client.Get(kymaURL)
+func (c *connector) sendGetRequest(kymaURL string, client *http.Client) ([]byte, error) {
+	r, getErr := client.Get(kymaURL)
 	if getErr != nil {
 		return nil, fmt.Errorf("Error while sending Get request to [%s], error [%s]", kymaURL, getErr)
 	}
@@ -333,10 +331,10 @@ func (c *connector) sendGetRequest(kymaURL string) ([]byte, error) {
 	return body, nil
 }
 
-func (c *connector) sendPostRequest(reqBody []byte, url string) ([]byte, error) {
+func (c *connector) sendPostRequest(reqBody []byte, url string, client *http.Client) ([]byte, error) {
 	// send the csr request to get base64 encoded signed crt
 	// clientCrt and caCrt
-	pRes, err := c.client.Post(url, "Content-Type: application/json", bytes.NewBuffer(reqBody))
+	pRes, err := client.Post(url, "Content-Type: application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("Error while sending Post request to [%s], error [%s]", url, err)
 	}
@@ -520,4 +518,13 @@ func writeClientSignedCertToFile(cSc *clientSignedCertificate) error {
 		}
 	}
 	return nil
+}
+
+// PrettyPrint Prints the Metadata with Indentation
+func (m *Metadata) PrettyPrint() {
+	json, err := json.MarshalIndent(m, "", "\t")
+	if err != nil {
+		fmt.Printf("Indentation Print Failed with error %s", err)
+	}
+	fmt.Println(string(json))
 }
