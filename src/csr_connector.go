@@ -77,6 +77,22 @@ type Connecter interface {
 //        "key-algorithm": "rsa2048"
 //      }
 //   }
+type Metadata struct {
+	ClientIdentity      cIdentity      `json:"clientIdentity"`
+	URLS                metadataURLS   `json:"urls"`
+	CertificateMetadata csrCertificate `json:"certificate"`
+}
+
+type cIdentity struct {
+	Application string `json:"application"`
+}
+
+type metadataURLS struct {
+	EventsURL     string `json:"eventsUrl"`
+	MetadataURL   string `json:"metadataUrls"`
+	RenewCertURL  string `json:"renewCertUrl"`
+	RevokeCertURL string `json:"revokeCertUrl"`
+}
 
 // valid client certificate signed by the Kyma Certificate Authority.
 // {
