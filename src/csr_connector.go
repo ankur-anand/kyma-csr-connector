@@ -289,14 +289,18 @@ func (c *connector) GetMetadata() (*Metadata, error) {
 	if url == "" {
 		return nil, fmt.Errorf(`infoUrl":["https://gateway.{CLUSTER_DOMAIN}/v1/applications/management/info"] Not Initialied call "GenerateCSR() method first"`)
 	}
+
+	clientCrt := filepath.Join(c.dirPath, fileClientCrt)
+	privateKey := filepath.Join(c.dirPath, fileGenerateKey)
 	// Load client cert and keyFile
-	cert, err := tls.LoadX509KeyPair(fileClientCrt, fileGenerateKey)
+	cert, err := tls.LoadX509KeyPair(clientCrt, privateKey)
 	if err != nil {
 		return nil, err
 	}
 
 	// Load CA cert
-	caCert, err := ioutil.ReadFile(fileCaCrt)
+	caCrtFile := filepath.Join(c.dirPath, fileCaCrt)
+	caCert, err := ioutil.ReadFile(caCrtFile)
 	if err != nil {
 		return nil, err
 	}
