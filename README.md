@@ -62,20 +62,24 @@ package main
 import (
 	kymacsr "github.com/ankur-anand/kyma-csr-connector/src"
 )
-dir := ""
-url := "https://connector-service.kyma.test.xip.io/v1/applications/signingRequests/info?token=3EOdFJtGLiVHtmVyDX0hNJavg0wAzOOKsJozjbddsnTegSOYhIXsH_JiQGgPLFqwJ6eUNLDQoY1SywzhtOYTQw=="
-connector, err := kymacsr.NewConnecter(url, dir)
-if err != nil {
-	log.Fatal(err)
+
+func main() {
+	dir := ""
+	url := "https://connector-service.kyma.test.xip.io/v1/applications/signingRequests/info?token=3EOdFJtGLiVHtmVyDX0hNJavg0wAzOOKsJozjbddsnTegSOYhIXsH_JiQGgPLFqwJ6eUNLDQoY1SywzhtOYTQw=="
+	connector, err := kymacsr.NewConnecter(url, dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = connector.GenerateCSR()
+	if err != nil {
+		log.Fatal(err)
+	}
+	metadata, err := connector.GetMetadata()
+	if err != nil {
+		log.Fatal(err)
+	}
+	metadata.PrettyPrint()
 }
 
-err = connector.GenerateCSR()
-if err != nil {
-	log.Fatal(err)
-}
-metadata, err := connector.GetMetadata()
-if err != nil {
-	log.Fatal(err)
-}
-metadata.PrettyPrint()
 ```
