@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -170,6 +171,10 @@ func NewConnecter(appConnectorURL string, dirPath string) (Connecter, error) {
 	if err != nil {
 		return connect{}, err
 	}
+	dpath, err := validateDirPATH(dirPath)
+	if err != nil {
+		return connect{}, err
+	}
 	// as certificate  signed by unknown authority error
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -179,7 +184,7 @@ func NewConnecter(appConnectorURL string, dirPath string) (Connecter, error) {
 	cnntr := &connector{
 		kymaURL: kURL.String(),
 		client:  myClient,
-		dirPath: dirPath,
+		dirPath: dpath,
 	}
 
 	return connect{
@@ -194,11 +199,14 @@ func NewConnecterWithHTTPClient(appConnectorURL string, dirPath string, httpClie
 	if err != nil {
 		return connect{}, err
 	}
-
+	dpath, err := validateDirPATH(dirPath)
+	if err != nil {
+		return connect{}, err
+	}
 	cnntr := &connector{
 		kymaURL: kURL.String(),
 		client:  httpClient,
-		dirPath: dirPath,
+		dirPath: dpath,
 	}
 
 	return connect{
@@ -227,7 +235,7 @@ func (c *connector) GenerateCSR() error {
 	// setup csrinfo to connector
 	c.csrinfo = cinfo
 	// generate the public and private key
-	csrReq, err := generateCSRRequest(cinfo)
+	csrReq, err := generateCSRRequest(cinfo, c.dirPath)
 	csrReqBase64 := base64.StdEncoding.EncodeToString([]byte(csrReq))
 	if err != nil {
 		return err
@@ -251,7 +259,7 @@ func (c *connector) GenerateCSR() error {
 	}
 
 	// Write all these certificate to file
-	err = writeClientSignedCertToFile(cSc)
+	err = writeClientSignedCertToFile(cSc, c.dirPath)
 	if err != nil {
 		return err
 	}
@@ -385,7 +393,7 @@ func validateRequiredPouplatedCSR(pcsr *csrInfo) error {
 	return nil
 }
 
-func generatePrivateKey(c *csrInfo) (*rsa.PrivateKey, error) {
+func generatePrivateKey(c *csrInfo, dirPath string) (*rsa.PrivateKey, error) {
 	// generate private key
 
 	bits, err := getBits(c.Certificate.KeyAlgo)
@@ -398,16 +406,16 @@ func generatePrivateKey(c *csrInfo) (*rsa.PrivateKey, error) {
 	}
 
 	// save Private key to the File
-	err = writeStringToFile(fileGenerateKey, exportRsaPrivateKeyAsPemStr(privatekey))
+	err = writeStringToFile(filepath.Join(dirPath, fileGenerateKey), exportRsaPrivateKeyAsPemStr(privatekey))
 	// keep this private key safe.
 	return privatekey, err
 }
 
-func generateCSRRequest(c *csrInfo) ([]byte, error) {
+func generateCSRRequest(c *csrInfo, dirPath string) ([]byte, error) {
 	// generate the DistinguishedName
 	dsn := getDistinguishedName(c.Certificate.Subject)
 	csrTem := generateCSRTemplate(dsn)
-	pk, err := generatePrivateKey(c)
+	pk, err := generatePrivateKey(c, dirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -492,21 +500,21 @@ func generateCSRTemplate(d dstnshdName) *x509.CertificateRequest {
 	return &csrTemplate
 }
 
-func writeClientSignedCertToFile(cSc *clientSignedCertificate) error {
+func writeClientSignedCertToFile(cSc *clientSignedCertificate, dirPath string) error {
 	cases := []struct {
 		fileName string
 		value    string
 	}{
 		{
-			fileName: fileCrt,
+			fileName: filepath.Join(dirPath, fileCrt),
 			value:    cSc.Crt,
 		},
 		{
-			fileName: fileClientCrt,
+			fileName: filepath.Join(dirPath, fileClientCrt),
 			value:    cSc.ClientCrt,
 		},
 		{
-			fileName: fileCaCrt,
+			fileName: filepath.Join(dirPath, fileCaCrt),
 			value:    cSc.CaCrt,
 		},
 	}
@@ -551,7 +559,7 @@ func validateDirPATH(dir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Unable to get the current working dir [%s]", err)
 	}
-	dir = cDir + certificateDIR
+	dir = filepath.Join(cDir, certificateDIR)
 	errDir := os.MkdirAll(dir, 0755)
 	if errDir != nil {
 		return "", fmt.Errorf("Failed to create Dirctory [%s], Error [%s]", dir, err)

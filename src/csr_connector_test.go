@@ -245,7 +245,8 @@ func TestGenerateCSRRequest(t *testing.T) {
 		t.Errorf("%s", err.Error())
 	}
 
-	csr, err := generateCSRRequest(csrinfo)
+	wrDir, _ := os.Getwd()
+	csr, err := generateCSRRequest(csrinfo, wrDir)
 	if err != nil {
 		t.Errorf("Could not generate CSR %s", err)
 	}
@@ -271,7 +272,8 @@ func TestWriteClientSignedCertToFile(t *testing.T) {
 		ClientCrt: testB64,
 		CaCrt:     testB64,
 	}
-	err := writeClientSignedCertToFile(cSc)
+	curWd, _ := os.Getwd()
+	err := writeClientSignedCertToFile(cSc, curWd)
 	if err != nil {
 		t.Errorf("Writing Client Certificate to File Failed with error [%s]", err.Error())
 	}
