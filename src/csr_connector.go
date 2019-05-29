@@ -91,7 +91,7 @@ type cIdentity struct {
 
 type metadataURLS struct {
 	EventsURL     string `json:"eventsUrl"`
-	MetadataURL   string `json:"metadataUrls"`
+	MetadataURL   string `json:"metadataUrl"`
 	RenewCertURL  string `json:"renewCertUrl"`
 	RevokeCertURL string `json:"revokeCertUrl"`
 }
@@ -316,7 +316,6 @@ func (c *connector) GetMetadata() (*Metadata, error) {
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	client := &http.Client{Transport: transport}
-
 	resp, err := c.sendGetRequest(url, client)
 	if err != nil {
 		return nil, err
