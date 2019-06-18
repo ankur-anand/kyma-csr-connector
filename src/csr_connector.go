@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -83,6 +84,8 @@ type Metadata struct {
 	ClientIdentity      cIdentity      `json:"clientIdentity"`
 	URLS                metadataURLS   `json:"urls"`
 	CertificateMetadata csrCertificate `json:"certificate"`
+	HTTPSClient         *http.Client   `json:"-"`
+	//APIRegistryURL string `json:"apiRegistry"`
 }
 
 type cIdentity struct {
@@ -216,7 +219,7 @@ func NewConnecterWithHTTPClient(appConnectorURL string, dirPath string, httpClie
 }
 
 func (c *connector) GenerateCSR() error {
-	body, err := c.sendGetRequest(c.kymaURL, c.client)
+	body, err := sendGetRequest(c.kymaURL, c.client)
 	if err != nil {
 		return err
 	}
@@ -249,7 +252,7 @@ func (c *connector) GenerateCSR() error {
 	}
 
 	cSc := &clientSignedCertificate{}
-	body, err = c.sendPostRequest(byteReq, cinfo.CsrURL, c.client)
+	body, err = sendPostRequest(byteReq, cinfo.CsrURL, c.client)
 	if err != nil {
 		return err
 	}
@@ -316,7 +319,7 @@ func (c *connector) GetMetadata() (*Metadata, error) {
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	client := &http.Client{Transport: transport}
-	resp, err := c.sendGetRequest(url, client)
+	resp, err := sendGetRequest(url, client)
 	if err != nil {
 		return nil, err
 	}
@@ -325,10 +328,11 @@ func (c *connector) GetMetadata() (*Metadata, error) {
 	if err := getJSON(metaDataT, resp); err != nil {
 		return nil, err
 	}
+	metaDataT.HTTPSClient = client
 	return metaDataT, nil
 }
 
-func (c *connector) sendGetRequest(kymaURL string, client *http.Client) ([]byte, error) {
+func sendGetRequest(kymaURL string, client *http.Client) ([]byte, error) {
 	r, getErr := client.Get(kymaURL)
 	if getErr != nil {
 		return nil, fmt.Errorf("Error while sending Get request to [%s], error [%s]", kymaURL, getErr)
@@ -346,7 +350,7 @@ func (c *connector) sendGetRequest(kymaURL string, client *http.Client) ([]byte,
 	return body, nil
 }
 
-func (c *connector) sendPostRequest(reqBody []byte, url string, client *http.Client) ([]byte, error) {
+func sendPostRequest(reqBody []byte, url string, client *http.Client) ([]byte, error) {
 	// send the csr request to get base64 encoded signed crt
 	// clientCrt and caCrt
 	pRes, err := client.Post(url, "Content-Type: application/json", bytes.NewBuffer(reqBody))
@@ -536,8 +540,27 @@ func writeClientSignedCertToFile(cSc *clientSignedCertificate, dirPath string) e
 }
 
 // PrettyPrint Prints the Metadata with Indentation
-func (m *Metadata) PrettyPrint() {
+// it will output the result to the passed io.writer
+func (m *Metadata) PrettyPrint(w io.Writer) {
 	json, err := json.MarshalIndent(m, "", "\t")
+	if err != nil {
+		fmt.Printf("Indentation Print Failed with error %s", err)
+	}
+	w.Write(json)
+}
+
+// GetAppRegistryAPI URLs to the Application Registry API
+func (m *Metadata) GetAppRegistryAPI() {
+	json, err := sendGetRequest(m.URLS.MetadataURL, m.HTTPSClient)
+	if err != nil {
+		fmt.Printf("Indentation Print Failed with error %s", err)
+	}
+	fmt.Println(string(json))
+}
+
+// GetEventsAPI URLs to the Events API.
+func (m *Metadata) GetEventsAPI() {
+	json, err := sendGetRequest(m.URLS.EventsURL, m.HTTPSClient)
 	if err != nil {
 		fmt.Printf("Indentation Print Failed with error %s", err)
 	}

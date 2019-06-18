@@ -11,7 +11,7 @@ Installation
 ### Usage
 
 ```s
-kyma-csr-connector -cntr-url {APP_CONNECTOR_URL} [-crt-dir "/path/of/directory/to/save/cert" ]
+kyma-csr-connector -cnurl {APP_CONNECTOR_URL} [-crt-dir "/path/of/directory/to/save/cert" ]
 ```
 
 If your `$GOPATH/bin` is not exported as `$PATH` you can use the installed binary using complete path `$GOPATH/bin/kyma-csr-connector`
@@ -21,7 +21,7 @@ Default value of -crt-dir will be current executing directory. Make sure you hav
 ### Example:
 
 ```s
-kyma-csr-connector -cntr-url https://connector-service.kyma.test.xip.io/v1/applications/signingRequests/info\?token\=e8HX\=\=
+kyma-csr-connector -cnurl https://connector-service.kyma.test.xip.io/v1/applications/signingRequests/info\?token\=e8HX\=\=
 ```
 
 ### Output:
@@ -79,7 +79,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	metadata.PrettyPrint()
+	metadata.PrettyPrint(os.Stdout)
 }
 
 ```
